@@ -1,24 +1,27 @@
-<?xml version="1.0"?>
-<package>
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <metadata>
-    <id>Rebus.Async</id>
-    <version>$version$</version>
-    <title>Rebus.Async</title>
-    <authors>mookid8000</authors>
+    <id>ICM.Rebus.Async</id>
+    <version>2.0.1.0</version>
+    <title>ICM.Rebus.Async</title>
+    <authors>mookid8000,michalsteyn</authors>
     <owners>mookid8000</owners>
+    <description>Experimental async/await-based request/reply API for Rebus</description>
     <licenseUrl>https://raw.githubusercontent.com/rebus-org/Rebus/master/LICENSE.md</licenseUrl>
     <projectUrl>http://mookid.dk/oncode/rebus</projectUrl>
+    <iconUrl>https://github.com/mookid8000/Rebus/raw/master/artwork/little_rebusbus2_copy-200x200.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>Experimental async/await-based request/reply API for Rebus</description>
+    <developmentDependency>false</developmentDependency>
     <copyright>Copyright 2012-2016</copyright>
     <tags>rebus async async-await request-reply request reply asynchronous</tags>
-    <iconUrl>https://github.com/mookid8000/Rebus/raw/master/artwork/little_rebusbus2_copy-200x200.png</iconUrl>
+    <frameworkAssemblies />
     <dependencies>
-      <dependency id="Rebus" version="2.0.1" />
+      <group>
+        <dependency id="Rebus" version="2.0.1" />
+      </group>
     </dependencies>
   </metadata>
   <files>
-    <file src="bin\Release\Rebus.Async.dll" target="lib\NET45" />
-    <file src="bin\Release\Rebus.Async.xml" target="lib\NET45" />
+    <file src="C:\ICM\Tests\Rebus.Async\Rebus.Async\bin\Debug\ICM.Rebus.Async.dll" target="lib\net45" />
   </files>
 </package>
