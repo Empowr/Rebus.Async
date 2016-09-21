@@ -46,7 +46,10 @@ namespace Rebus.Async
                     if (!isRequest)
                     {
                         // it's the reply!
-                        _messages[correlationId] = new TimedMessage(message);
+                        //_messages[correlationId] = new TimedMessage(message);
+                        var timedMessage = _messages[correlationId];
+                        timedMessage.Message = message;
+                        timedMessage.TaskCompletionSource.SetResult(message);
                         return;
                     }
                 }

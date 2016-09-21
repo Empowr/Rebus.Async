@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Rebus.Bus;
+using Rebus.Bus.Advanced;
 using Rebus.Config;
 using Rebus.Logging;
 using Rebus.Messages;
@@ -54,43 +55,156 @@ namespace Rebus.Async
         /// <returns></returns>
         public static async Task<TReply> SendRequest<TReply>(this IBus bus, object request, TimeSpan? timeout = null)
         {
-            var maxWaitTime = timeout ?? TimeSpan.FromSeconds(5);
             var correlationId = $"{ReplyHandlerStep.SpecialCorrelationIdPrefix}:{Guid.NewGuid()}";
-
-            var headers = new Dictionary<string, string>
-            {
-                {Headers.CorrelationId, correlationId},
-                {ReplyHandlerStep.SpecialRequestTag, "request"}
-            };
-
-            var sendTime = DateTime.UtcNow;
-
-            await bus.Send(request, headers);
-
-            TimedMessage reply;
-
-            while (!Messages.TryRemove(correlationId, out reply))
-            {
-                var elapsed = DateTime.UtcNow - sendTime;
-
-                await Task.Delay(200);
-
-                if (elapsed > maxWaitTime)
-                {
-                    throw new TimeoutException($"Did not receive reply for request with correlation ID '{correlationId}' within {maxWaitTime} timeout");
-                }
-            }
-
-            var message = reply.Message;
 
             try
             {
-                return (TReply)message.Body;
+                var maxWaitTime = timeout ?? TimeSpan.FromSeconds(5);
+
+                var headers = new Dictionary<string, string>
+                {
+                    {Headers.CorrelationId, correlationId},
+                    {ReplyHandlerStep.SpecialRequestTag, "request"}
+                };
+
+                var reply = new TimedMessage();
+                Messages[correlationId] = reply;
+                
+                await bus.Send(request, headers);
+
+                await reply.TaskCompletionSource.Task.WithTimeout(maxWaitTime, $"Did not receive reply for request with correlation ID '{correlationId}' within {maxWaitTime} timeout");
+
+                var message = reply.Message;
+
+                try
+                {
+                    return (TReply) message.Body;
+                }
+                catch (InvalidCastException exception)
+                {
+                    throw new InvalidCastException(
+                        $"Could not return message {message.GetMessageLabel()} as a {typeof(TReply)}", exception);
+                }
             }
-            catch (InvalidCastException exception)
+            finally
             {
-                throw new InvalidCastException($"Could not return message {message.GetMessageLabel()} as a {typeof(TReply)}", exception);
+                TimedMessage reply;
+                Messages.TryRemove(correlationId, out reply);
             }
+        }
+
+        /// <summary>
+        /// Extension method on <see cref="IBus"/> that allows for asynchronously sending a request and dispatching
+        /// the received reply to the continuation.
+        /// </summary>
+        /// <typeparam name="TReply">Specifies the expected type of the reply. Can be any type compatible with the actually received reply</typeparam>
+        /// <param name="bus">The bus instance to use to send the request</param>
+        /// <param name="request">The request message</param>
+        /// <param name="timeout">Optionally specifies the max time to wait for a reply. If this time is exceeded, a <see cref="TimeoutException"/> is thrown</param>
+        /// <returns></returns>
+        public static async Task<TReply> PublishRequest<TReply>(this IBus bus, object request, TimeSpan? timeout = null)
+        {
+            var correlationId = $"{ReplyHandlerStep.SpecialCorrelationIdPrefix}:{Guid.NewGuid()}";
+
+            try
+            {
+                var maxWaitTime = timeout ?? TimeSpan.FromSeconds(5);
+
+                var headers = new Dictionary<string, string>
+                {
+                    {Headers.CorrelationId, correlationId},
+                    {ReplyHandlerStep.SpecialRequestTag, "request"}
+                };
+
+                var reply = new TimedMessage();
+                Messages[correlationId] = reply;
+
+                await bus.Publish(request, headers);
+
+                await reply.TaskCompletionSource.Task.WithTimeout(maxWaitTime, $"Did not receive reply for request with correlation ID '{correlationId}' within {maxWaitTime} timeout");
+
+                var message = reply.Message;
+
+                try
+                {
+                    return (TReply)message.Body;
+                }
+                catch (InvalidCastException exception)
+                {
+                    throw new InvalidCastException(
+                        $"Could not return message {message.GetMessageLabel()} as a {typeof(TReply)}", exception);
+                }
+            }
+            finally
+            {
+                TimedMessage reply;
+                Messages.TryRemove(correlationId, out reply);
+            }
+        }
+
+        /// <summary>
+        /// Extension method on <see cref="IBus" /> that allows for asynchronously sending a request and dispatching
+        /// the received reply to the continuation.
+        /// </summary>
+        /// <typeparam name="TReply">Specifies the expected type of the reply. Can be any type compatible with the actually received reply</typeparam>
+        /// <param name="advancedApi">The advanced API.</param>
+        /// <param name="destination">The destination.</param>
+        /// <param name="request">The request message</param>
+        /// <param name="timeout">Optionally specifies the max time to wait for a reply. If this time is exceeded, a <see cref="TimeoutException" /> is thrown</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidCastException"></exception>
+        public static async Task<TReply> SendRequest<TReply>(this IAdvancedApi advancedApi, string destination, object request, TimeSpan? timeout = null)
+        {
+            var correlationId = $"{ReplyHandlerStep.SpecialCorrelationIdPrefix}:{Guid.NewGuid()}";
+
+            try
+            {
+                var maxWaitTime = timeout ?? TimeSpan.FromSeconds(5);
+
+                var headers = new Dictionary<string, string>
+                {
+                    {Headers.CorrelationId, correlationId},
+                    {ReplyHandlerStep.SpecialRequestTag, "request"}
+                };
+
+                var reply = new TimedMessage();
+                Messages[correlationId] = reply;
+
+                await advancedApi.Routing.Send(destination, request, headers);
+
+                await reply.TaskCompletionSource.Task.WithTimeout(maxWaitTime, $"Did not receive reply for request with correlation ID '{correlationId}' within {maxWaitTime} timeout");
+
+                var message = reply.Message;
+
+                try
+                {
+                    return (TReply)message.Body;
+                }
+                catch (InvalidCastException exception)
+                {
+                    throw new InvalidCastException(
+                        $"Could not return message {message.GetMessageLabel()} as a {typeof(TReply)}", exception);
+                }
+            }
+            finally
+            {
+                TimedMessage reply;
+                Messages.TryRemove(correlationId, out reply);
+            }
+        }
+
+
+    }
+
+    public static class AsyncExtentions
+    {
+        public static async Task<TResult> WithTimeout<TResult>(this Task<TResult> task, TimeSpan timeout, string errorMessage = null)
+        {
+            if (task == await Task.WhenAny(task, Task.Delay(timeout)))
+            {
+                return await task;
+            }
+            throw new TimeoutException(errorMessage ?? $"Timeout of {timeout}");
         }
     }
 }

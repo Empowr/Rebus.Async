@@ -1,17 +1,25 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Rebus.Messages;
 
 namespace Rebus.Async
 {
     class TimedMessage
     {
-        public TimedMessage(Message message)
+        public TaskCompletionSource<object> TaskCompletionSource { get; set; }
+
+        public TimedMessage(Message message): this()
         {
             Message = message;
             Time = DateTime.UtcNow;
         }
 
-        public Message Message { get; }
+        public TimedMessage()
+        {
+            TaskCompletionSource = new TaskCompletionSource<object>();
+        }
+
+        public Message Message { get; set; }
         public DateTime Time { get; }
         public TimeSpan Age => DateTime.UtcNow - Time;
     }

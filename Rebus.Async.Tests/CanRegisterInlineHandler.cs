@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebus.Activation;
@@ -27,7 +28,13 @@ namespace Rebus.Async.Tests
             _bus = Configure.With(_activator)
                 .Transport(t => t.UseInMemoryTransport(new InMemNetwork(), InputQueueName))
                 .Options(o => o.EnableSynchronousRequestReply(replyMaxAgeSeconds: 7))
-                .Routing(r => r.TypeBased().Map<SomeRequest>(InputQueueName))
+                .Routing(r =>
+                {
+                    var config = r.TypeBased();
+                    config.Map<SomeRequest>(InputQueueName);
+                    config.Map<SomeReply>(InputQueueName);
+                }
+                )
                 .Start();
         }
 
@@ -40,6 +47,27 @@ namespace Rebus.Async.Tests
             });
 
             var reply = await _bus.SendRequest<SomeReply>(new SomeRequest());
+
+            Assert.That(reply, Is.Not.Null);
+        }
+
+        [Test]
+        public async Task CanDoPublishReply()
+        {
+            await _activator.Bus.Subscribe<SomeReply>();
+            await _activator.Bus.Subscribe<SomeRequest>();
+
+            _activator.Handle<SomeReply>(async (bus, request) =>
+            {
+                await Task.Delay(1000);
+            });
+
+            _activator.Handle<SomeRequest>(async (bus, request) =>
+            {
+                await bus.Reply(new SomeReply());
+            });
+
+            var reply = await _bus.PublishRequest<SomeReply>(new SomeRequest());
 
             Assert.That(reply, Is.Not.Null);
         }
