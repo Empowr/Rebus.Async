@@ -22,7 +22,7 @@ namespace Rebus.Async
         {
             _messages = messages;
             _replyMaxAge = replyMaxAge;
-            _log = rebusLoggerFactory.GetCurrentClassLogger();
+            _log = rebusLoggerFactory.GetLogger<ReplyHandlerStep>();
             _cleanupTask = asyncTaskFactory.Create("CleanupAbandonedRepliesTask", CleanupAbandonedReplies);
         }
 
