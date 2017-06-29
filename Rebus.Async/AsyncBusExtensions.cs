@@ -26,6 +26,14 @@ namespace Rebus.Async
         /// </summary>
         public static void EnableSynchronousRequestReply(this OptionsConfigurer configurer, int replyMaxAgeSeconds = 10)
         {
+            if (configurer == null) throw new ArgumentNullException(nameof(configurer));
+
+            if (replyMaxAgeSeconds <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(replyMaxAgeSeconds), replyMaxAgeSeconds,
+                    "Please supply a positive value for the max age of a reply (i.e. how long to keep a reply until we give up on returning it)");
+            }
+
             configurer.Register(c =>
             {
                 var rebusLoggerFactory = c.Get<IRebusLoggerFactory>();
@@ -51,9 +59,10 @@ namespace Rebus.Async
         /// <typeparam name="TReply">Specifies the expected type of the reply. Can be any type compatible with the actually received reply</typeparam>
         /// <param name="bus">The bus instance to use to send the request</param>
         /// <param name="request">The request message</param>
+        /// <param name="optionalHeaders">Headers to be included in the request message</param>
         /// <param name="timeout">Optionally specifies the max time to wait for a reply. If this time is exceeded, a <see cref="TimeoutException"/> is thrown</param>
         /// <returns></returns>
-        public static async Task<TReply> SendRequest<TReply>(this IBus bus, object request, TimeSpan? timeout = null)
+        public static async Task<TReply> SendRequest<TReply>(this IBus bus, object request, Dictionary<string, string> optionalHeaders = null, TimeSpan? timeout = null)
         {
             var correlationId = $"{ReplyHandlerStep.SpecialCorrelationIdPrefix}:{Guid.NewGuid()}";
 
@@ -69,7 +78,21 @@ namespace Rebus.Async
 
                 var reply = new TimedMessage();
                 Messages[correlationId] = reply;
-                
+                if (optionalHeaders != null)
+                {
+                    foreach (var kvp in optionalHeaders)
+                    {
+                        try
+                        {
+                            headers.Add(kvp.Key, kvp.Value);
+                        }
+                        catch (Exception exception)
+                        {
+                            throw new ArgumentException($"Could not add key-value-pair {kvp.Key}={kvp.Value} to headers", exception);
+                        }
+                    }
+                }
+
                 await bus.Send(request, headers);
 
                 await reply.TaskCompletionSource.Task.WithTimeout(maxWaitTime, $"Did not receive reply for request with correlation ID '{correlationId}' within {maxWaitTime} timeout");
@@ -100,9 +123,10 @@ namespace Rebus.Async
         /// <typeparam name="TReply">Specifies the expected type of the reply. Can be any type compatible with the actually received reply</typeparam>
         /// <param name="bus">The bus instance to use to send the request</param>
         /// <param name="request">The request message</param>
+        /// <param name="optionalHeaders">Headers to be included in the request message</param>
         /// <param name="timeout">Optionally specifies the max time to wait for a reply. If this time is exceeded, a <see cref="TimeoutException"/> is thrown</param>
         /// <returns></returns>
-        public static async Task<TReply> PublishRequest<TReply>(this IBus bus, object request, TimeSpan? timeout = null)
+        public static async Task<TReply> PublishRequest<TReply>(this IBus bus, object request, Dictionary<string, string> optionalHeaders = null, TimeSpan? timeout = null)
         {
             var correlationId = $"{ReplyHandlerStep.SpecialCorrelationIdPrefix}:{Guid.NewGuid()}";
 
@@ -118,6 +142,20 @@ namespace Rebus.Async
 
                 var reply = new TimedMessage();
                 Messages[correlationId] = reply;
+                if (optionalHeaders != null)
+                {
+                    foreach (var kvp in optionalHeaders)
+                    {
+                        try
+                        {
+                            headers.Add(kvp.Key, kvp.Value);
+                        }
+                        catch (Exception exception)
+                        {
+                            throw new ArgumentException($"Could not add key-value-pair {kvp.Key}={kvp.Value} to headers", exception);
+                        }
+                    }
+                }
 
                 await bus.Publish(request, headers);
 
@@ -150,10 +188,11 @@ namespace Rebus.Async
         /// <param name="advancedApi">The advanced API.</param>
         /// <param name="destination">The destination.</param>
         /// <param name="request">The request message</param>
+        /// <param name="optionalHeaders">Headers to be included in the request message</param>
         /// <param name="timeout">Optionally specifies the max time to wait for a reply. If this time is exceeded, a <see cref="TimeoutException" /> is thrown</param>
         /// <returns></returns>
         /// <exception cref="InvalidCastException"></exception>
-        public static async Task<TReply> SendRequest<TReply>(this IAdvancedApi advancedApi, string destination, object request, TimeSpan? timeout = null)
+        public static async Task<TReply> SendRequest<TReply>(this IAdvancedApi advancedApi, string destination, object request, Dictionary<string, string> optionalHeaders = null, TimeSpan? timeout = null)
         {
             var correlationId = $"{ReplyHandlerStep.SpecialCorrelationIdPrefix}:{Guid.NewGuid()}";
 
@@ -169,7 +208,20 @@ namespace Rebus.Async
 
                 var reply = new TimedMessage();
                 Messages[correlationId] = reply;
-
+                if (optionalHeaders != null)
+                {
+                    foreach (var kvp in optionalHeaders)
+                    {
+                        try
+                        {
+                            headers.Add(kvp.Key, kvp.Value);
+                        }
+                        catch (Exception exception)
+                        {
+                            throw new ArgumentException($"Could not add key-value-pair {kvp.Key}={kvp.Value} to headers", exception);
+                        }
+                    }
+                }
                 await advancedApi.Routing.Send(destination, request, headers);
 
                 await reply.TaskCompletionSource.Task.WithTimeout(maxWaitTime, $"Did not receive reply for request with correlation ID '{correlationId}' within {maxWaitTime} timeout");
