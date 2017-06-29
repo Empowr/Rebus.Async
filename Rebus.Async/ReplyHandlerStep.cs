@@ -7,6 +7,8 @@ using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Pipeline;
 using Rebus.Threading;
+using Rebus.Transport;
+
 #pragma warning disable 1998
 
 namespace Rebus.Async
@@ -49,6 +51,7 @@ namespace Rebus.Async
                         //_messages[correlationId] = new TimedMessage(message);
                         var timedMessage = _messages[correlationId];
                         timedMessage.Message = message;
+                        //timedMessage.AmbientContext = AmbientTransactionContext.Current;
                         timedMessage.TaskCompletionSource.SetResult(message);
                         return;
                     }

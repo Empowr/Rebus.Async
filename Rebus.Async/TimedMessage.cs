@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Rebus.Messages;
+using Rebus.Transport;
 
 namespace Rebus.Async
 {
@@ -22,5 +23,6 @@ namespace Rebus.Async
         public Message Message { get; set; }
         public DateTime Time { get; }
         public TimeSpan Age => DateTime.UtcNow - Time;
+        //public ITransactionContext AmbientContext { get; set; }
     }
 }

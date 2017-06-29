@@ -10,6 +10,7 @@ using Rebus.Messages;
 using Rebus.Pipeline;
 using Rebus.Pipeline.Receive;
 using Rebus.Threading;
+using Rebus.Transport;
 
 namespace Rebus.Async
 {
@@ -73,7 +74,8 @@ namespace Rebus.Async
                 var headers = new Dictionary<string, string>
                 {
                     {Headers.CorrelationId, correlationId},
-                    {ReplyHandlerStep.SpecialRequestTag, "request"}
+                    {ReplyHandlerStep.SpecialRequestTag, "request"},
+                    {Headers.TimeToBeReceived, maxWaitTime.ToString("g")}
                 };
 
                 var reply = new TimedMessage();
@@ -98,6 +100,8 @@ namespace Rebus.Async
                 await reply.TaskCompletionSource.Task.WithTimeout(maxWaitTime, $"Did not receive reply for request with correlation ID '{correlationId}' within {maxWaitTime} timeout");
 
                 var message = reply.Message;
+                //AmbientTransactionContext.SetCurrent(reply.AmbientContext);
+                //var currentContext = MessageContext.Current;
 
                 try
                 {
@@ -116,17 +120,17 @@ namespace Rebus.Async
             }
         }
 
-        /// <summary>
-        /// Extension method on <see cref="IBus"/> that allows for asynchronously sending a request and dispatching
-        /// the received reply to the continuation.
-        /// </summary>
-        /// <typeparam name="TReply">Specifies the expected type of the reply. Can be any type compatible with the actually received reply</typeparam>
-        /// <param name="bus">The bus instance to use to send the request</param>
-        /// <param name="request">The request message</param>
-        /// <param name="optionalHeaders">Headers to be included in the request message</param>
-        /// <param name="timeout">Optionally specifies the max time to wait for a reply. If this time is exceeded, a <see cref="TimeoutException"/> is thrown</param>
-        /// <returns></returns>
-        public static async Task<TReply> PublishRequest<TReply>(this IBus bus, object request, Dictionary<string, string> optionalHeaders = null, TimeSpan? timeout = null)
+            /// <summary>
+            /// Extension method on <see cref="IBus"/> that allows for asynchronously sending a request and dispatching
+            /// the received reply to the continuation.
+            /// </summary>
+            /// <typeparam name="TReply">Specifies the expected type of the reply. Can be any type compatible with the actually received reply</typeparam>
+            /// <param name="bus">The bus instance to use to send the request</param>
+            /// <param name="request">The request message</param>
+            /// <param name="optionalHeaders">Headers to be included in the request message</param>
+            /// <param name="timeout">Optionally specifies the max time to wait for a reply. If this time is exceeded, a <see cref="TimeoutException"/> is thrown</param>
+            /// <returns></returns>
+            public static async Task<TReply> PublishRequest<TReply>(this IBus bus, object request, Dictionary<string, string> optionalHeaders = null, TimeSpan? timeout = null)
         {
             var correlationId = $"{ReplyHandlerStep.SpecialCorrelationIdPrefix}:{Guid.NewGuid()}";
 
@@ -137,7 +141,8 @@ namespace Rebus.Async
                 var headers = new Dictionary<string, string>
                 {
                     {Headers.CorrelationId, correlationId},
-                    {ReplyHandlerStep.SpecialRequestTag, "request"}
+                    {ReplyHandlerStep.SpecialRequestTag, "request"},
+                    {Headers.TimeToBeReceived, maxWaitTime.ToString("g")}
                 };
 
                 var reply = new TimedMessage();
@@ -203,7 +208,8 @@ namespace Rebus.Async
                 var headers = new Dictionary<string, string>
                 {
                     {Headers.CorrelationId, correlationId},
-                    {ReplyHandlerStep.SpecialRequestTag, "request"}
+                    {ReplyHandlerStep.SpecialRequestTag, "request"},
+                    {Headers.TimeToBeReceived, maxWaitTime.ToString("g")}
                 };
 
                 var reply = new TimedMessage();
