@@ -2,7 +2,7 @@
 <package xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <metadata>
     <id>ICM.Rebus.Async</id>
-    <version>3.0.1.0</version>
+    <version>3.0.2.0</version>
     <title>ICM.Rebus.Async</title>
     <authors>mookid8000,michalsteyn</authors>
     <owners>mookid8000</owners>

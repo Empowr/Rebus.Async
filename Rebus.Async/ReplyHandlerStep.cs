@@ -7,7 +7,6 @@ using Rebus.Logging;
 using Rebus.Messages;
 using Rebus.Pipeline;
 using Rebus.Threading;
-using Rebus.Transport;
 
 #pragma warning disable 1998
 
@@ -49,11 +48,13 @@ namespace Rebus.Async
                     {
                         // it's the reply!
                         //_messages[correlationId] = new TimedMessage(message);
-                        var timedMessage = _messages[correlationId];
-                        timedMessage.Message = message;
-                        //timedMessage.AmbientContext = AmbientTransactionContext.Current;
-                        timedMessage.TaskCompletionSource.SetResult(message);
-                        return;
+                        if (_messages.ContainsKey(correlationId))
+                        {
+                            var timedMessage = _messages[correlationId];
+                            timedMessage.Message = message;
+                            //timedMessage.AmbientContext = AmbientTransactionContext.Current;
+                            timedMessage.TaskCompletionSource.SetResult(message);
+                        }
                     }
                 }
             }
@@ -73,6 +74,8 @@ namespace Rebus.Async
 
         async Task CleanupAbandonedReplies()
         {
+            if(_messages == null) return;
+            
             var messageList = _messages.Values.ToList();
 
             var timedMessagesToRemove = messageList
@@ -87,6 +90,8 @@ namespace Rebus.Async
             foreach (var messageToRemove in timedMessagesToRemove)
             {
                 var correlationId = messageToRemove.Message.Headers[Headers.CorrelationId];
+                if(string.IsNullOrEmpty(correlationId)) continue;
+                
                 TimedMessage temp;
                 _messages.TryRemove(correlationId, out temp);
             }
