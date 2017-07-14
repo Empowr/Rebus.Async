@@ -91,11 +91,13 @@ namespace Rebus.Async
 
                 foreach (var messageToRemove in timedMessagesToRemove)
                 {
-                    var correlationId = messageToRemove.Message.Headers[Headers.CorrelationId];
-                    if (string.IsNullOrEmpty(correlationId)) continue;
+                    string correlationId = null;
+                    var headers = messageToRemove?.Message?.Headers;
 
-                    TimedMessage temp;
-                    _messages.TryRemove(correlationId, out temp);
+                    if (headers?.TryGetValue(Headers.CorrelationId, out correlationId) != true
+                        || string.IsNullOrEmpty(correlationId)) continue;
+
+                    _messages.TryRemove(correlationId, out _);
                 }
             }
             catch (Exception ex)
