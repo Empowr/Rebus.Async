@@ -74,26 +74,33 @@ namespace Rebus.Async
 
         async Task CleanupAbandonedReplies()
         {
-            if(_messages == null) return;
-            
-            var messageList = _messages.Values.ToList();
-
-            var timedMessagesToRemove = messageList
-                .Where(m => m.Age > _replyMaxAge)
-                .ToList();
-
-            if (!timedMessagesToRemove.Any()) return;
-
-            _log.Info("Found {0} reply messages whose age exceeded {1} - removing them now!",
-                timedMessagesToRemove.Count, _replyMaxAge);
-
-            foreach (var messageToRemove in timedMessagesToRemove)
+            try
             {
-                var correlationId = messageToRemove.Message.Headers[Headers.CorrelationId];
-                if(string.IsNullOrEmpty(correlationId)) continue;
-                
-                TimedMessage temp;
-                _messages.TryRemove(correlationId, out temp);
+                if (_messages == null) return;
+
+                var messageList = _messages.Values.ToList();
+
+                var timedMessagesToRemove = messageList
+                    .Where(m => m.Age > _replyMaxAge)
+                    .ToList();
+
+                if (!timedMessagesToRemove.Any()) return;
+
+                _log.Info("Found {0} reply messages whose age exceeded {1} - removing them now!",
+                    timedMessagesToRemove.Count, _replyMaxAge);
+
+                foreach (var messageToRemove in timedMessagesToRemove)
+                {
+                    var correlationId = messageToRemove.Message.Headers[Headers.CorrelationId];
+                    if (string.IsNullOrEmpty(correlationId)) continue;
+
+                    TimedMessage temp;
+                    _messages.TryRemove(correlationId, out temp);
+                }
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"Error Running CleanupAbandonedReplies Task: {ex}");
             }
         }
     }
